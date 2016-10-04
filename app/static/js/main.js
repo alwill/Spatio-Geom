@@ -4,8 +4,6 @@ var multiPolygons = {
     collection: {},
     selectedGroup: null,
     add: function(e, color) {
-        console.log(e);
-        console.log(Object.keys(e));
         var polygonArr = [];
         for (var key in Object.keys(e)) {
             var polygon = e[key];
@@ -17,9 +15,32 @@ var multiPolygons = {
         group.id = new Date().getTime() + Math.floor(Math.random() * 1000);
         group.color = color;
         group.polygonList = polygonArr;
-
         this.collection[group.id] = group;
-
+        return group.id;
+    },
+    setSelection: function(multiPolygonsID) {
+        if (this.selectedGroup !== multiPolygonsID) {
+            this.selectedGroup = multiPolygonsID;
+            for (var polygon in multiPolygons.collection[multiPolygonsID].polygonList) {
+                multiPolygons.collection[multiPolygonsID].polygonList[polygon].set('editable', true);
+            }
+        }
+    },
+    delete: function(multiPolygonsID) {
+        for (var polygon in multiPolygons.collection[multiPolygonsID].polygonList) {
+            multiPolygons.collection[multiPolygonsID].polygonList[polygon].setMap(null);
+        }
+        delete this.collection[multiPolygonsID];
+    },
+    hide: function(multiPolygonsID) {
+        for (var polygon in multiPolygons.collection[multiPolygonsID].polygonList) {
+            multiPolygons.collection[multiPolygonsID].polygonList[polygon].setMap(null);
+        }
+    },
+    show: function(multiPolygonsID) {
+        for (var polygon in multiPolygons.collection[multiPolygonsID].polygonList) {
+            multiPolygons.collection[multiPolygonsID].polygonList[polygon].setMap(map);
+        }
     }
 };
 
@@ -280,6 +301,29 @@ function addMultiPolygonToList(multiPolygonID) {
             .append($("<div>").attr("class", "col-md-2"))
             .append($("<button>").attr("id", "delete-" + multiPolygonID).attr("class", "btn btn-danger col-md-5 mobile-device").text("Delete"))
     );
+
+    $("#delete-" + multiPolygonID).on("click", function(e) {
+        multiPolygons.delete(multiPolygonID);
+        $(this).parent().remove();
+        if (!$("#region-list").children().length) {
+            showEmptyRegionList();
+            $("#clear-regions").addClass("hidden");
+        }
+    })
+
+    $("#show-hide-" + multiPolygonID).on("click", function(e) {
+        if ($(this).text() === "Hide") {
+            $(this).text("Show");
+            multiPolygons.hide(multiPolygonID);
+        } else {
+            $(this).text("Hide");
+            multiPolygons.show(multiPolygonID);
+        }
+    })
+
+    $("#" + multiPolygonID).on("click", function(e) {
+        multiPolygons.setSelection(multiPolygonID);
+    })
 }
 
 function addPolygonToList(polygonID) {
@@ -348,8 +392,8 @@ function handleMultiPolygons(polygonIdList, color) {
             multiPolygonArr.push(polygons.collection[polyID]);
         }
 
-        multiPolygons.add(multiPolygonArr, color);
-        console.log(multiPolygons);
+        var groupID = multiPolygons.add(multiPolygonArr, color);
+        addMultiPolygonToList(groupID);
 }
 
 function generateNewPolygon(polygonList) {
