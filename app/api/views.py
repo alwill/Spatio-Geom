@@ -66,6 +66,8 @@ def find_intersections():
         "regions"] if region.get("visible")]
     if len(regions) > 1:
         intersection = process_intersections(regions)
+        print "int"
+        print intersection
     else:
         return jsonify(
             {"success": False, "data": "Not enough regions selected"})

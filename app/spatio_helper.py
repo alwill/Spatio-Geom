@@ -47,6 +47,7 @@ def process_intersections(regions):
     """
     # This will be used to start the process
     region = regions[0].get("region")
+    print region
     # Compare with the rest of the regions
     for other_region in regions[1:]:
         region = region_logic.intersection(region, other_region.get("region"))

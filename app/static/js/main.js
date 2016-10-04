@@ -1,4 +1,28 @@
 var map;
+
+var multiPolygons = {
+    collection: {},
+    selectedGroup: null,
+    add: function(e, color) {
+        console.log(e);
+        console.log(Object.keys(e));
+        var polygonArr = [];
+        for (var key in Object.keys(e)) {
+            var polygon = e[key];
+            polygon.setMap(map);
+            polygonArr.push(polygon);
+        }
+        var group = {},
+            that = this;
+        group.id = new Date().getTime() + Math.floor(Math.random() * 1000);
+        group.color = color;
+        group.polygonList = polygonArr;
+
+        this.collection[group.id] = group;
+
+    }
+};
+
 var polygons = {
     collection: {},
     selectedShape: null,
@@ -33,6 +57,15 @@ var polygons = {
             managePolygon(polygonID, "delete");
             polygons.delete(polygons.collection[polygonID]);
         }
+    },
+    newMultiPolygon: function(poly) {
+        var shape = poly,
+            that = this;
+        shape.type = "polygon";
+        shape.path = poly.getPath();
+        shape.id = new Date().getTime() + Math.floor(Math.random() * 1000);
+        this.collection[shape.id] = shape;
+        return shape.id;
     },
     newPolygon: function(poly) {
         var shape = poly,
@@ -155,8 +188,9 @@ function initialize() {
             type: "POST",
             url: "/api/find_intersections",
             success: function(data) {
-                if (data.success)
+                if (data.success) {
                     generateNewPolygon(data);
+                }
             },
             failure: function(data) {
                 console.log(data);
@@ -235,6 +269,19 @@ function managePolygon(polygonID, action) {
     });
 }
 
+function addMultiPolygonToList(multiPolygonID) {
+    var fillColor = multiPolygons.collection[multiPolygonID].color;
+    $("#placeholder-empty").remove();
+    $("#region-list").append(
+        $("<li>").attr("id", multiPolygonID).attr("class", "list-group-item row")
+            .attr("style", "margin: 1%; background-color: " + fillColor + ";")
+            .append($("<p>").attr("style", "padding-bottom: 5%;").text("Region ID: " + multiPolygonID))
+            .append($("<button>").attr("id", "show-hide-" + multiPolygonID).attr("class", "btn btn-default col-md-5 mobile-device").attr("style", "padding-bottom: 1%").text("Hide"))
+            .append($("<div>").attr("class", "col-md-2"))
+            .append($("<button>").attr("id", "delete-" + multiPolygonID).attr("class", "btn btn-danger col-md-5 mobile-device").text("Delete"))
+    );
+}
+
 function addPolygonToList(polygonID) {
     var fillColor = polygons.collection[polygonID].fillColor;
     $("#placeholder-empty").remove();
@@ -254,6 +301,10 @@ function addPolygonToList(polygonID) {
         var polygonID = $(this).parent().attr("id");
         var polygon = polygons.collection[polygonID];
         deletePolygonButton(this, polygon);
+    })
+    $("#" + polygonID).on("click", function(e) {
+        var polygon = polygons.collection[polygonID];
+        polygons.setSelection(polygon);
     })
 }
 
@@ -290,7 +341,22 @@ function clearSession() {
     });
 }
 
+function handleMultiPolygons(polygonIdList, color) {
+        var multiPolygonArr = new Array();
+        for (var id in polygonIdList) {
+            var polyID = polygonIdList[id];
+            multiPolygonArr.push(polygons.collection[polyID]);
+        }
+
+        multiPolygons.add(multiPolygonArr, color);
+        console.log(multiPolygons);
+}
+
 function generateNewPolygon(polygonList) {
+    var objKeys = Object.keys(polygonList.data);
+    var isMulti = objKeys.length > 1;
+    var multiPolygonsArr = new Array();
+    var color = polygons.generateColor();
     for (var polygon in polygonList.data) {
         var arr = new Array();
         for (var i = 0; i < polygonList.data[polygon].length; i++) {
@@ -299,13 +365,25 @@ function generateNewPolygon(polygonList) {
         var poly = new google.maps.Polygon({
             paths: arr,
             strokeWeight: 4,
-            fillColor: polygons.generateColor(),
+            fillColor: isMulti ? color : polygons.generateColor,
             fillOpacity: 0.8,
             zIndex: 3
         });
-        var polygonID = polygons.newPolygon(poly)
-        managePolygon(polygonID, "add");
+        if (!isMulti) {
+            var polygonID = polygons.newPolygon(poly)
+            managePolygon(polygonID, "add");
+        } else {
+            var polygonID = polygons.newMultiPolygon(poly);
+            multiPolygonsArr.push(polygonID);
+        }
     }
+    if (isMulti) {
+        handleMultiPolygons(multiPolygonsArr, color);
+    }
+}
+
+function generateNewMultiPolygon(polygonList) {
+
 }
 
 function showEmptyRegionList() {
